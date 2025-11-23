@@ -1,0 +1,14 @@
+import { PrismaClient } from "@/generated/prisma/client";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+
+const prisma = PrismaClient;
+    
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: "mysql",
+  }),
+    emailAndPassword: { 
+        enabled: true,
+    },
+});

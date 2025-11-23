@@ -13,58 +13,57 @@ datasource db {
   provider = "mysql"
 }
 
-
 // -----------------------------------------------------
 // MODELS
 // -----------------------------------------------------
 
 model Client {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   firstname      String
   lastname       String
   phone          String
-  email          String   @unique
+  email          String    @unique
   passportNumber String?
   dateOfBirth    DateTime?
 
-  tickets   Ticket[]
-  bookings  Booking[]
+  tickets  Ticket[]
+  bookings Booking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Ticket {
-  id              String   @id @default(uuid())
-  clientId        String
-  providerId      String
-  bookingId       String?  @unique // NEW
-  airline         String
-  ticketNumber    String   @unique
-  pnr             String?
-  departure       String
-  arrival         String
-  departureDate   DateTime
-  returnDate      DateTime?
-  type            TicketType
-  basePrice       Decimal  @db.Decimal(10,2)
-  agencyCommission Decimal @db.Decimal(10,2)
-  totalPrice      Decimal  @db.Decimal(10,2)
-  status          TicketStatus @default(ISSUED)
+  id               String       @id @default(uuid())
+  clientId         String
+  providerId       String
+  bookingId        String?      @unique // NEW
+  airline          String
+  ticketNumber     String       @unique
+  pnr              String?
+  departure        String
+  arrival          String
+  departureDate    DateTime
+  returnDate       DateTime?
+  type             TicketType
+  basePrice        Decimal      @db.Decimal(10, 2)
+  agencyCommission Decimal      @db.Decimal(10, 2)
+  totalPrice       Decimal      @db.Decimal(10, 2)
+  status           TicketStatus @default(ISSUED)
 
   // Relations
-  client      Client   @relation(fields: [clientId], references: [id])
-  provider    AirlineProvider @relation(fields: [providerId], references: [id])
-  booking     Booking? @relation(fields: [bookingId], references: [id]) // NEW
-  payments    Payment[]
-  invoice     Invoice?
+  client   Client          @relation(fields: [clientId], references: [id])
+  provider AirlineProvider @relation(fields: [providerId], references: [id])
+  booking  Booking?        @relation(fields: [bookingId], references: [id]) // NEW
+  payments Payment[]
+  invoice  Invoice?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Booking {
-  id            String   @id @default(uuid())
+  id            String        @id @default(uuid())
   clientId      String
   userId        String
   travelDate    DateTime
@@ -72,47 +71,46 @@ model Booking {
   destination   String
   bookingStatus BookingStatus @default(PENDING)
 
-  client Client @relation(fields: [clientId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  client Client  @relation(fields: [clientId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
   ticket Ticket? // OK now, relation is complete
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
 model Payment {
-  id        String      @id @default(uuid())
-  ticketId  String
-  method    PaymentMethod
-  amount    Decimal     @db.Decimal(10,2)
-  paidAt    DateTime?
-  status    PaymentStatus @default(PAID)
+  id       String        @id @default(uuid())
+  ticketId String
+  method   PaymentMethod
+  amount   Decimal       @db.Decimal(10, 2)
+  paidAt   DateTime?
+  status   PaymentStatus @default(PAID)
 
-  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Invoice {
-  id           String   @id @default(uuid())
-  ticketId     String   @unique
-  invoiceNumber String  @unique
-  amount       Decimal  @db.Decimal(10,2)
-  emissionDate DateTime @default(now())
-  pdfUrl       String?
+  id            String   @id @default(uuid())
+  ticketId      String   @unique
+  invoiceNumber String   @unique
+  amount        Decimal  @db.Decimal(10, 2)
+  emissionDate  DateTime @default(now())
+  pdfUrl        String?
 
-  ticket       Ticket @relation(fields: [ticketId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
 }
 
 model AirlineProvider {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   name           String
   contact        String?
   type           ProviderType
   email          String?
-  commissionRate Decimal @db.Decimal(5,2)
+  commissionRate Decimal      @db.Decimal(5, 2)
 
   tickets Ticket[]
 }
@@ -124,7 +122,15 @@ model User {
   password String
   role     UserRole @default(AGENT)
 
-  bookings Booking[]
+  bookings      Booking[]
+  emailVerified Boolean   @default(false)
+  image         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
 }
 
 // -----------------------------------------------------
@@ -170,4 +176,52 @@ enum UserRole {
   ADMIN
   AGENT
   ACCOUNTANT
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId(length: 191)])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId(length: 191)])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier(length: 191)])
+  @@map("verification")
 }
