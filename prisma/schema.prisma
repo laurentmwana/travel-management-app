@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+
+// -----------------------------------------------------
+// MODELS
+// -----------------------------------------------------
+
+model Client {
+  id             String   @id @default(uuid())
+  firstname      String
+  lastname       String
+  phone          String
+  email          String   @unique
+  passportNumber String?
+  dateOfBirth    DateTime?
+
+  tickets   Ticket[]
+  bookings  Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id              String   @id @default(uuid())
+  clientId        String
+  providerId      String
+  bookingId       String?  @unique // NEW
+  airline         String
+  ticketNumber    String   @unique
+  pnr             String?
+  departure       String
+  arrival         String
+  departureDate   DateTime
+  returnDate      DateTime?
+  type            TicketType
+  basePrice       Decimal  @db.Decimal(10,2)
+  agencyCommission Decimal @db.Decimal(10,2)
+  totalPrice      Decimal  @db.Decimal(10,2)
+  status          TicketStatus @default(ISSUED)
+
+  // Relations
+  client      Client   @relation(fields: [clientId], references: [id])
+  provider    AirlineProvider @relation(fields: [providerId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id]) // NEW
+  payments    Payment[]
+  invoice     Invoice?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  clientId      String
+  userId        String
+  travelDate    DateTime
+  origin        String
+  destination   String
+  bookingStatus BookingStatus @default(PENDING)
+
+  client Client @relation(fields: [clientId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  ticket Ticket? // OK now, relation is complete
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Payment {
+  id        String      @id @default(uuid())
+  ticketId  String
+  method    PaymentMethod
+  amount    Decimal     @db.Decimal(10,2)
+  paidAt    DateTime?
+  status    PaymentStatus @default(PAID)
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Invoice {
+  id           String   @id @default(uuid())
+  ticketId     String   @unique
+  invoiceNumber String  @unique
+  amount       Decimal  @db.Decimal(10,2)
+  emissionDate DateTime @default(now())
+  pdfUrl       String?
+
+  ticket       Ticket @relation(fields: [ticketId], references: [id])
+}
+
+model AirlineProvider {
+  id             String   @id @default(uuid())
+  name           String
+  contact        String?
+  type           ProviderType
+  email          String?
+  commissionRate Decimal @db.Decimal(5,2)
+
+  tickets Ticket[]
+}
+
+model User {
+  id       String   @id @default(uuid())
+  name     String
+  email    String   @unique
+  password String
+  role     UserRole @default(AGENT)
+
+  bookings Booking[]
+}
+
+// -----------------------------------------------------
+// ENUMS
+// -----------------------------------------------------
+
+enum TicketType {
+  ONE_WAY
+  ROUND_TRIP
+}
+
+enum TicketStatus {
+  ISSUED
+  CANCELLED
+  REFUNDED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK
+  CARD
+}
+
+enum PaymentStatus {
+  PAID
+  FAILED
+  PENDING
+}
+
+enum ProviderType {
+  AIRLINE
+  CONSOLIDATOR
+}
+
+enum UserRole {
+  ADMIN
+  AGENT
+  ACCOUNTANT
+}
